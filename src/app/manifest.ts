@@ -1,0 +1,58 @@
+import type { MetadataRoute } from 'next';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'DAMEC - Plataforma de Emergencias Climáticas',
+    short_name: 'DAMEC',
+    description: 'Monitoreo y reporte ciudadano de emergencias climáticas frente al Fenómeno El Niño en Perú',
+    start_url: '/',
+    id: '/',
+    display: 'standalone',
+    background_color: '#0F172A',
+    theme_color: '#0F172A',
+    orientation: 'portrait-primary',
+    scope: '/',
+    lang: 'es-PE',
+    categories: ['weather', 'government', 'utilities', 'social'],
+    icons: [
+      {
+        src: '/icons/icon-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any'
+      },
+      {
+        src: '/icons/icon-maskable-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable'
+      },
+      {
+        src: '/icons/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any'
+      },
+      {
+        src: '/icons/icon-maskable-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable'
+      }
+    ],
+    shortcuts: [
+      {
+        name: 'Reportar Incidente',
+        short_name: 'Reportar',
+        description: 'Enviar un nuevo reporte ciudadano de emergencia',
+        url: '/?action=report',
+        icons: [
+          {
+            src: '/icons/icon-192x192.png',
+            sizes: '192x192'
+          }
+        ]
+      }
+    ]
+  };
+}
