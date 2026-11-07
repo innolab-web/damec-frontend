@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { runOfficialETL } from '@/lib/etl/orchestrator';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
