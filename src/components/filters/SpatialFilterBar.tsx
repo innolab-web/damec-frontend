@@ -49,7 +49,7 @@ export const SpatialFilterBar: React.FC<SpatialFilterBarProps> = ({
   };
 
   return (
-    <div className="bg-white border-b border-slate-200 px-6 py-3 space-y-3 font-sans">
+    <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-3 space-y-2.5 sm:space-y-3 font-sans">
       {/* Fila superior: Búsqueda rápida + Umbral de confianza + Reset */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Input de Búsqueda */}

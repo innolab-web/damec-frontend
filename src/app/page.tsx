@@ -43,6 +43,9 @@ export default function Home() {
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState<boolean>(false);
   const [isLoadingLayers, setIsLoadingLayers] = useState<boolean>(false);
+  
+  // Estado de navegación móvil (PWA): 'map' o 'feed'
+  const [mobileTab, setMobileTab] = useState<'map' | 'feed'>('map');
 
   // Estado de filtros avanzados
   const [filters, setFilters] = useState<FilterState>({
@@ -76,6 +79,19 @@ export default function Home() {
     const interval = setInterval(fetchLayers, 60000);
     return () => clearInterval(interval);
   }, [fetchLayers]);
+
+  // Deep-linking: Si la URL trae ?incident=INC-xxx, lo selecciona y enfoca de inmediato
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const sharedIncidentId = params.get('incident');
+      if (sharedIncidentId) {
+        setSelectedId(sharedIncidentId);
+        setIsDetailDrawerOpen(true);
+        setMobileTab('map');
+      }
+    }
+  }, [geoData]);
 
   // Filtrado reactivo en cliente
   const filteredFeatures = useMemo(() => {
@@ -185,21 +201,21 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
       {/* Header institucional DAMEC */}
-      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-6 border-b border-slate-800 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-red-600 rounded-lg flex items-center justify-center">
+      <header className="h-16 bg-slate-900 text-white flex items-center justify-between px-3 sm:px-6 border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="p-2 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Activity className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold tracking-tight">DAMEC</h1>
-              <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono">v0.1.0-MVP</span>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight">DAMEC</h1>
+              <span className="text-[10px] sm:text-xs bg-slate-800 text-slate-300 px-1.5 sm:px-2 py-0.5 rounded border border-slate-700 font-mono">v0.1.0-MVP</span>
             </div>
-            <p className="text-xs text-slate-400">Plataforma de Emergencias Climáticas - Fenómeno El Niño</p>
+            <p className="text-[11px] text-slate-400 hidden sm:block">Plataforma de Emergencias Climáticas - Fenómeno El Niño</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Indicador de cola local IndexedDB */}
           <PendingQueueIndicator />
 
@@ -210,10 +226,11 @@ export default function Home() {
 
           <button 
             onClick={() => setIsReportModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-md shadow-sm transition-all"
+            className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-2.5 sm:px-3.5 py-2 rounded-md shadow-sm transition-all"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>Reportar Incidente</span>
+            <PlusCircle className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden xs:inline sm:inline">Reportar Incidente</span>
+            <span className="inline xs:hidden sm:hidden">Reportar</span>
           </button>
         </div>
       </header>
@@ -226,42 +243,75 @@ export default function Home() {
         filteredCount={filteredFeatures.length}
       />
 
+      {/* Selector de vistas táctico para dispositivos móviles (PWA First) */}
+      <div className="md:hidden flex items-center bg-slate-900 px-3 py-2 border-b border-slate-800 text-xs font-semibold gap-2 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileTab('map')}
+          className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
+            mobileTab === 'map'
+              ? 'bg-blue-600 text-white shadow-sm font-bold'
+              : 'text-slate-400 hover:text-white bg-slate-800/60'
+          }`}
+        >
+          <MapPin className="w-4 h-4" />
+          <span>Mapa OSM</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('feed')}
+          className={`flex-1 py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all ${
+            mobileTab === 'feed'
+              ? 'bg-blue-600 text-white shadow-sm font-bold'
+              : 'text-slate-400 hover:text-white bg-slate-800/60'
+          }`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Feed Operativo ({filteredFeatures.length})</span>
+        </button>
+      </div>
+
       {/* Barra de Estadísticas Sintéticas / KPIs */}
-      <section className="bg-white border-b border-slate-200 px-6 py-2 grid grid-cols-2 sm:grid-cols-4 gap-4 flex-shrink-0 text-sm shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded bg-red-50 text-red-700"><AlertTriangle className="w-4 h-4" /></div>
+      <section className="bg-white border-b border-slate-200 px-3 sm:px-6 py-2 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 flex-shrink-0 text-sm shadow-xs">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-1.5 sm:p-2 rounded bg-red-50 text-red-700 flex-shrink-0"><AlertTriangle className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Incidentes Activos</p>
-            <p className="text-base font-bold text-slate-900">{stats.activeCount}</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Incidentes Activos</p>
+            <p className="text-sm sm:text-base font-bold text-slate-900">{stats.activeCount}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded bg-blue-50 text-blue-700"><MapPin className="w-4 h-4" /></div>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-1.5 sm:p-2 rounded bg-blue-50 text-blue-700 flex-shrink-0"><MapPin className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Distritos Impactados</p>
-            <p className="text-base font-bold text-slate-900">{stats.districtsCount} distritos</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Distritos Impactados</p>
+            <p className="text-sm sm:text-base font-bold text-slate-900">{stats.districtsCount} distritos</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded bg-amber-50 text-amber-700"><AlertOctagon className="w-4 h-4" /></div>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-1.5 sm:p-2 rounded bg-amber-50 text-amber-700 flex-shrink-0"><AlertOctagon className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Vías Afectadas</p>
-            <p className="text-base font-bold text-slate-900">{stats.affectedKm} km</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Vías Afectadas</p>
+            <p className="text-sm sm:text-base font-bold text-slate-900">{stats.affectedKm} km</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded bg-emerald-50 text-emerald-700"><ShieldCheck className="w-4 h-4" /></div>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-1.5 sm:p-2 rounded bg-emerald-50 text-emerald-700 flex-shrink-0"><ShieldCheck className="w-3.5 sm:w-4 h-3.5 sm:h-4" /></div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Confianza Promedio</p>
-            <p className="text-base font-bold text-slate-900">{stats.avgConfidence}%</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Confianza Promedio</p>
+            <p className="text-sm sm:text-base font-bold text-slate-900">{stats.avgConfidence}%</p>
           </div>
         </div>
       </section>
 
       {/* Contenido Principal: Feed lateral + Mapa */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative w-full h-full">
         {/* Panel lateral: Feed de Incidentes */}
-        <aside className="w-full md:w-96 lg:w-[400px] bg-white border-r border-slate-200 flex flex-col flex-shrink-0 z-10 shadow-sm">
+        <aside 
+          className={`
+            w-full md:w-96 lg:w-[400px] bg-white border-r border-slate-200 flex-col flex-shrink-0 z-10 shadow-sm
+            ${mobileTab === 'feed' ? 'flex' : 'hidden md:flex'}
+          `}
+        >
           <div className="p-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
               Feed Operativo
@@ -286,7 +336,13 @@ export default function Home() {
                 return (
                   <div
                     key={item.id}
-                    onClick={() => handlePointClick(item.id)}
+                    onClick={() => {
+                      handlePointClick(item.id);
+                      // En móvil, conmutar al mapa para enfocar visualmente el punto
+                      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                        setMobileTab('map');
+                      }
+                    }}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-blue-50/90 border-blue-500 shadow-xs'
@@ -344,7 +400,12 @@ export default function Home() {
         </aside>
 
         {/* Mapa interactivo OpenStreetMap / MapLibre GL */}
-        <main className="flex-1 relative bg-slate-100">
+        <main 
+          className={`
+            flex-1 relative bg-slate-100 w-full h-full
+            ${mobileTab === 'map' ? 'block' : 'hidden md:block'}
+          `}
+        >
           <DamecMap
             data={filteredGeoJSON}
             selectedIncidentId={selectedId}
@@ -352,6 +413,17 @@ export default function Home() {
             onOpenDetails={handleOpenDetails}
             className="w-full h-full"
           />
+
+          {/* Botón flotante móvil para acceder rápidamente al Feed desde el mapa */}
+          <div className="md:hidden absolute bottom-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <button
+              onClick={() => setMobileTab('feed')}
+              className="bg-slate-900/95 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl border border-slate-700 flex items-center gap-2 backdrop-blur-md active:scale-95 transition-transform"
+            >
+              <Activity className="w-4 h-4 text-blue-400" />
+              <span>Ver Feed de Incidentes ({filteredFeatures.length})</span>
+            </button>
+          </div>
         </main>
 
         {/* Tarjeta / Drawer de Detalle Completo de Clúster */}
@@ -360,8 +432,9 @@ export default function Home() {
             feature={selectedFeature}
             onClose={() => setIsDetailDrawerOpen(false)}
             onFocusMap={(coords) => {
-              // El centrado lo gestiona la sincronización de selectedIncidentId en DamecMap
               setSelectedId(selectedFeature.properties.id);
+              setMobileTab('map');
+              setIsDetailDrawerOpen(false);
             }}
           />
         )}

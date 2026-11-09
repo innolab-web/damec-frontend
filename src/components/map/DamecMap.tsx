@@ -313,11 +313,24 @@ export const DamecMap: React.FC<DamecMapProps> = ({
 
     map.on('load', () => {
       initLayers(map);
+      map.resize();
     });
 
     mapRef.current = map;
 
+    // Redimensionar automáticamente ante cambios de visibilidad o tamaño (vital en móviles y PWA)
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.resize();
+      }
+    });
+
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      resizeObserver.disconnect();
       map.remove();
     };
   }, [basemap]);

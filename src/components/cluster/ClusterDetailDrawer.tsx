@@ -63,12 +63,36 @@ export const ClusterDetailDrawer: React.FC<ClusterDetailDrawerProps> = ({
 
   const confidencePct = Math.round(properties.confidenceScore * 100);
 
-  const handleShare = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(
-        `[DAMEC ALERTA] ${properties.title} - ${properties.district}, ${properties.region}. Severidad: ${properties.severity.toUpperCase()}. https://damec.pe/incidents/${properties.id}`
-      );
-      alert('Enlace del incidente copiado al portapapeles.');
+  const handleShare = async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://damec.pages.dev';
+    const shareUrl = `${origin}/?incident=${encodeURIComponent(properties.id)}`;
+    const shareTitle = `[DAMEC ALERTA] ${properties.title}`;
+    const shareText = `🚨 ${properties.title} - ${properties.district}, ${properties.region}. Severidad: ${properties.severity.toUpperCase()} (${confidencePct}% confianza). Ver en mapa táctico:`;
+
+    // 1. Soporte nativo para Web Share API en Android / iOS
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: `${shareText}\n${shareUrl}`,
+          url: shareUrl,
+        });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    // 2. Fallback estándar al portapapeles
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+        alert('✅ Enlace oficial de la alerta copiado al portapapeles.');
+      } catch {
+        prompt('Copia el enlace del incidente:', shareUrl);
+      }
+    } else {
+      prompt('Copia el enlace del incidente:', shareUrl);
     }
   };
 
@@ -252,7 +276,10 @@ export const ClusterDetailDrawer: React.FC<ClusterDetailDrawerProps> = ({
 
         {coords && onFocusMap && (
           <button
-            onClick={() => onFocusMap(coords)}
+            onClick={() => {
+              onFocusMap(coords);
+              onClose();
+            }}
             className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
           >
             <MapPin className="w-4 h-4" />
