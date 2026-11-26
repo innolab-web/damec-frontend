@@ -15,7 +15,10 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 
     if (isSupabaseConfigured) {
       const updatePayload: Record<string, any> = {};
-      if (status) updatePayload.status = status;
+      if (status) {
+        updatePayload.status = status;
+        updatePayload.verification_status = status;
+      }
       if (description !== undefined) updatePayload.description = description;
       if (incident_type_id) updatePayload.incident_type_id = incident_type_id;
 
@@ -23,14 +26,21 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         .from('citizen_report')
         .update(updatePayload)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
       if (error) {
+        console.error('[Admin API] Error actualizando reporte:', error.message);
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
-      return NextResponse.json({ success: true, report: data });
+      // Re-ejecutar clustering para reflejar el cambio de estado en el mapa en tiempo real
+      try {
+        await supabase.rpc('process_spatial_clusters');
+      } catch (clusterErr) {
+        console.warn('[Admin API] Error re-clusterizando:', clusterErr);
+      }
+
+      return NextResponse.json({ success: true, report: data?.[0] || data });
     }
 
     // Mock exitoso para desarrollo

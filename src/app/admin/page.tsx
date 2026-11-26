@@ -141,20 +141,39 @@ export default function AdminModerationPage() {
   const handleSaveEdit = async (id: string, fields: Partial<EditableItem>) => {
     if (!itemToEdit) return;
 
-    if (itemToEdit.type === 'report') {
-      await fetch(`/api/v1/admin/reports/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields)
-      });
-      setReports(prev => prev.map(r => r.id === id ? { ...r, ...fields } as any : r));
-    } else {
-      await fetch(`/api/v1/admin/clusters/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields)
-      });
-      setClusters(prev => prev.map(c => c.id === id ? { ...c, ...fields } as any : c));
+    try {
+      if (itemToEdit.type === 'report') {
+        const res = await fetch(`/api/v1/admin/reports/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields)
+        });
+        if (res.ok) {
+          setReports(prev => prev.map(r => r.id === id ? { ...r, ...fields } as any : r));
+          setTimeout(loadReports, 300);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          alert(`Error al actualizar reporte: ${errData.error || 'Fallo en servidor'}`);
+        }
+      } else {
+        const res = await fetch(`/api/v1/admin/clusters/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields)
+        });
+        if (res.ok) {
+          setClusters(prev => prev.map(c => c.id === id ? { ...c, ...fields } as any : c));
+          setTimeout(loadClusters, 300);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          alert(`Error al actualizar clúster: ${errData.error || 'Fallo en servidor'}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error al guardar edición:', err);
+      alert('Error de conexión al actualizar.');
+    } finally {
+      setItemToEdit(null);
     }
   };
 
