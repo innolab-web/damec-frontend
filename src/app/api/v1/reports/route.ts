@@ -22,9 +22,12 @@ export async function POST(req: NextRequest) {
     }
 
     let mediaUrl: string | null = null;
+    let storageErrorMsg: string | null = null;
 
-    // Subir imagen a Supabase Storage si las credenciales están configuradas
-    if (evidenceImage && isSupabaseConfigured) {
+    // 1. Subir imagen a Supabase Storage si se envió una evidencia real
+    const hasValidImage = evidenceImage && evidenceImage.size > 50 && evidenceImage.type.startsWith('image/');
+
+    if (hasValidImage && isSupabaseConfigured) {
       try {
         const fileExt = 'webp';
         const filePath = `reports/${clientTempId}.${fileExt}`;
@@ -42,14 +45,16 @@ export async function POST(req: NextRequest) {
             .getPublicUrl(filePath);
           mediaUrl = publicUrlData.publicUrl;
         } else {
+          storageErrorMsg = uploadError.message;
           console.warn('[API Reports] Storage warning:', uploadError.message);
         }
-      } catch (storageErr) {
+      } catch (storageErr: any) {
+        storageErrorMsg = storageErr?.message || 'Error de almacenamiento';
         console.warn('[API Reports] Error al procesar storage:', storageErr);
       }
     }
 
-    // Inserción en tabla citizen_report si Supabase está conectado
+    // 2. Inserción en tabla citizen_report con formato PostGIS EWKT (SRID 4326)
     if (isSupabaseConfigured) {
       try {
         // Mapear código a id de catálogo
@@ -61,31 +66,50 @@ export async function POST(req: NextRequest) {
 
         const incidentTypeId = typeData?.id || 1;
 
+        // Inserción en PostGIS usando EWKT explícito SRID=4326
         const { data: insertData, error: insertError } = await supabase
           .from('citizen_report')
           .insert({
             device_fingerprint: req.headers.get('x-client-fingerprint') || 'web-pwa-client',
             incident_type_id: incidentTypeId,
-            geom: `POINT(${longitude} ${latitude})`,
+            geom: `SRID=4326;POINT(${longitude} ${latitude})`,
             description,
             media_url: mediaUrl,
             status: 'PENDING'
           })
-          .select()
-          .single();
+          .select('id, incident_type_id, description, status, reported_at');
 
         if (insertError) {
-          console.warn('[API Reports] Inserción en BD omitida o fallida:', insertError.message);
-        } else {
+          console.error('[API Reports] Error en inserción Supabase:', insertError.message);
           return NextResponse.json({
-            success: true,
-            message: 'Reporte registrado en base de datos PostGIS.',
-            reportId: insertData?.id,
-            clientTempId
-          });
+            success: false,
+            error: `Error en base de datos: ${insertError.message}`,
+            details: insertError,
+            storageError: storageErrorMsg
+          }, { status: 400 });
         }
-      } catch (dbErr) {
-        console.warn('[API Reports] Error interactuando con Supabase:', dbErr);
+
+        // 3. Procesamiento en tiempo real: Disparar el clustering para reflejar el evento en el mapa
+        try {
+          await supabase.rpc('process_spatial_clusters');
+        } catch (clusterErr) {
+          console.warn('[API Reports] Clustering automático diferido:', clusterErr);
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Reporte registrado en base de datos PostGIS y procesado en el clúster.',
+          reportId: insertData?.[0]?.id,
+          clientTempId,
+          mediaUrl
+        });
+
+      } catch (dbErr: any) {
+        console.error('[API Reports] Error interactuando con Supabase:', dbErr);
+        return NextResponse.json({
+          success: false,
+          error: dbErr?.message || 'Error interactuando con Supabase'
+        }, { status: 500 });
       }
     }
 

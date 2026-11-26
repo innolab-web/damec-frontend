@@ -75,26 +75,27 @@ class SyncEngine {
   /**
    * Dispara el procesamiento de la cola de reportes
    */
-  public async triggerSync(): Promise<void> {
-    if (this.isSyncing) return;
+  public async triggerSync(): Promise<boolean> {
+    if (this.isSyncing) return false;
 
     const isConnected = await this.checkRealConnectivity();
     if (!isConnected) {
       console.log('[DAMEC Sync] Sin conectividad real confirmada. Se mantiene la cola offline.');
       this.notify();
-      return;
+      return false;
     }
 
     const pendingReports = await getPendingReports();
     if (pendingReports.length === 0) {
       this.notify();
-      return;
+      return true;
     }
 
     this.isSyncing = true;
     this.notify();
 
     console.log(`[DAMEC Sync] Iniciando sincronización de ${pendingReports.length} reportes...`);
+    let allSucceeded = true;
 
     for (const report of pendingReports) {
       try {
@@ -115,28 +116,30 @@ class SyncEngine {
         });
 
         if (response.ok) {
-          console.log(`[DAMEC Sync] Reporte ${report.client_temp_id} sincronizado exitosamente.`);
+          const resJson = await response.json().catch(() => ({}));
+          console.log(`[DAMEC Sync] Reporte ${report.client_temp_id} sincronizado exitosamente:`, resJson);
           await removeProcessedReport(report.client_temp_id);
         } else if (response.status >= 400 && response.status < 500) {
-          // Error de validación permanente
+          allSucceeded = false;
           const errorData = await response.json().catch(() => ({}));
           console.error(`[DAMEC Sync] Error de validación 4xx en ${report.client_temp_id}:`, errorData);
-          await updateReportStatus(report.client_temp_id, 'FAILED', errorData.message || 'Error de validación');
+          await updateReportStatus(report.client_temp_id, 'FAILED', errorData.error || errorData.message || 'Error de validación');
         } else {
-          // Error de servidor (5xx)
+          allSucceeded = false;
           throw new Error(`Error de servidor (${response.status})`);
         }
       } catch (err: unknown) {
+        allSucceeded = false;
         const errorMsg = err instanceof Error ? err.message : 'Error desconocido';
         console.warn(`[DAMEC Sync] Fallo de transmisión para ${report.client_temp_id}:`, errorMsg);
         await updateReportStatus(report.client_temp_id, 'FAILED', errorMsg);
-        // Interrumpir ciclo si perdimos conexión en medio del envío
         break;
       }
     }
 
     this.isSyncing = false;
     this.notify();
+    return allSucceeded;
   }
 }
 

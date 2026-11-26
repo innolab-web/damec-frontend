@@ -142,11 +142,18 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({
       const isOnline = syncEngine ? await syncEngine.checkRealConnectivity() : navigator.onLine;
 
       if (isOnline && syncEngine) {
-        await syncEngine.triggerSync();
-        setSubmitFeedback({
-          type: 'online_success',
-          message: '¡Reporte enviado y verificado exitosamente por el servidor!'
-        });
+        const syncSuccess = await syncEngine.triggerSync();
+        if (syncSuccess) {
+          setSubmitFeedback({
+            type: 'online_success',
+            message: '¡Reporte enviado y registrado exitosamente en la base de datos!'
+          });
+        } else {
+          setSubmitFeedback({
+            type: 'offline_saved',
+            message: 'Reporte guardado de forma segura en tu teléfono. Se reintentará la sincronización en segundo plano.'
+          });
+        }
       } else {
         setSubmitFeedback({
           type: 'offline_saved',
