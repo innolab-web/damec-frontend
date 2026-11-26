@@ -10,6 +10,9 @@ export async function POST(req: NextRequest) {
     const category = formData.get('category')?.toString();
     const latitude = parseFloat(formData.get('latitude')?.toString() || '');
     const longitude = parseFloat(formData.get('longitude')?.toString() || '');
+    const district = formData.get('district')?.toString() || 'Zona Monitoreada';
+    const province = formData.get('province')?.toString() || 'Provincia Local';
+    const region = formData.get('region')?.toString() || 'Perú';
     const description = formData.get('description')?.toString() || '';
     const clientTempId = formData.get('client_temp_id')?.toString() || `rep_${Date.now()}`;
     const evidenceImage = formData.get('evidence_image') as File | null;
@@ -24,17 +27,20 @@ export async function POST(req: NextRequest) {
     let mediaUrl: string | null = null;
     let storageErrorMsg: string | null = null;
 
-    // 1. Subir imagen a Supabase Storage si se envió una evidencia real
-    const hasValidImage = evidenceImage && evidenceImage.size > 50 && evidenceImage.type.startsWith('image/');
+    // 1. Subir imagen a Supabase Storage si se envió una evidencia real (> 200 bytes)
+    const hasValidImage = evidenceImage && evidenceImage.size > 200;
 
     if (hasValidImage && isSupabaseConfigured) {
       try {
         const fileExt = 'webp';
         const filePath = `reports/${clientTempId}.${fileExt}`;
 
+        // Convertir File a ArrayBuffer para compatibilidad garantizada en Cloudflare Pages Edge
+        const arrayBuffer = await evidenceImage.arrayBuffer();
+
         const { error: uploadError } = await supabase.storage
           .from('reports-media')
-          .upload(filePath, evidenceImage, {
+          .upload(filePath, arrayBuffer, {
             contentType: 'image/webp',
             upsert: true
           });
@@ -66,7 +72,7 @@ export async function POST(req: NextRequest) {
 
         const incidentTypeId = typeData?.id || 1;
 
-        // Inserción en PostGIS usando EWKT explícito SRID=4326
+        // Inserción en PostGIS usando EWKT explícito SRID=4326 y campos de ubicación
         const { data: insertData, error: insertError } = await supabase
           .from('citizen_report')
           .insert({
@@ -74,10 +80,13 @@ export async function POST(req: NextRequest) {
             incident_type_id: incidentTypeId,
             geom: `SRID=4326;POINT(${longitude} ${latitude})`,
             description,
+            district,
+            province,
+            region,
             media_url: mediaUrl,
             status: 'PENDING'
           })
-          .select('id, incident_type_id, description, status, reported_at');
+          .select('id, incident_type_id, description, district, province, region, media_url, status, reported_at');
 
         if (insertError) {
           console.error('[API Reports] Error en inserción Supabase:', insertError.message);

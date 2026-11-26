@@ -9,6 +9,9 @@ export interface QueuedReport {
   incident_type_id?: number;
   latitude: number;
   longitude: number;
+  district?: string;
+  province?: string;
+  region?: string;
   description: string;
   image_blob: Blob;
   image_preview?: string;

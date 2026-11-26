@@ -106,6 +106,9 @@ class SyncEngine {
         formData.append('category', report.category);
         formData.append('latitude', report.latitude.toString());
         formData.append('longitude', report.longitude.toString());
+        if (report.district) formData.append('district', report.district);
+        if (report.province) formData.append('province', report.province);
+        if (report.region) formData.append('region', report.region);
         formData.append('description', report.description);
         formData.append('client_timestamp', report.timestamp);
         formData.append('evidence_image', report.image_blob, `${report.client_temp_id}.webp`);

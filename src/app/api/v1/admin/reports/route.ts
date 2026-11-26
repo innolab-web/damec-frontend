@@ -66,6 +66,9 @@ export async function GET(req: NextRequest) {
         .select(`
           id,
           description,
+          district,
+          province,
+          region,
           media_url,
           reported_at,
           status,

@@ -31,6 +31,9 @@ interface CitizenReportItem {
   incident_type_id?: number;
   category: string;
   description: string;
+  district?: string;
+  province?: string;
+  region?: string;
   media_url?: string;
   latitude: number;
   longitude: number;
@@ -88,7 +91,32 @@ export default function AdminModerationPage() {
   }, []);
 
   // Carga de clusters
-  const loadClusters = useCallback(() => {
+  const loadClusters = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/layers/clusters');
+      if (res.ok) {
+        const geojson = await res.json();
+        if (geojson?.features && geojson.features.length > 0) {
+          const items = geojson.features.map((f: any) => ({
+            id: f.properties.id,
+            title: f.properties.title,
+            category: f.properties.category,
+            severity: f.properties.severity,
+            description: f.properties.description,
+            district: f.properties.district || 'Zona Monitoreada',
+            region: f.properties.region || 'Perú',
+            confidenceScore: f.properties.confidenceScore,
+            reportsCount: f.properties.reportsCount || 1,
+            isActive: f.properties.isActive
+          }));
+          setClusters(items);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Error cargando clusters reales:', e);
+    }
+
     const items = MOCK_DAMEC_GEOJSON.features.map(f => ({
       id: f.properties.id,
       title: f.properties.title,
@@ -371,11 +399,16 @@ export default function AdminModerationPage() {
                           </span>
                         </td>
 
-                        {/* Descripción */}
+                        {/* Descripción y Ubicación */}
                         <td className="py-3 px-4 max-w-xs">
                           <p className="text-slate-600 line-clamp-2 leading-relaxed">
                             {r.description || 'Sin descripción ingresada'}
                           </p>
+                          {(r.district || r.region) && (
+                            <span className="text-[10px] text-blue-600 font-semibold block mt-0.5">
+                              📍 {r.district || 'Zona Monitoreada'}, {r.region || 'Perú'}
+                            </span>
+                          )}
                         </td>
 
                         {/* Huella de dispositivo */}

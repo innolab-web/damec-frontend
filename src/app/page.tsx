@@ -16,7 +16,8 @@ import {
   MapPin, 
   Activity,
   PlusCircle,
-  Maximize2
+  Maximize2,
+  Camera
 } from 'lucide-react';
 import { CitizenReportModal } from '@/components/report/CitizenReportModal';
 import { PendingQueueIndicator } from '@/components/report/PendingQueueIndicator';
@@ -361,26 +362,34 @@ export default function Home() {
                     <p className="text-xs text-slate-600 line-clamp-2 mb-2">{item.description}</p>
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                      <span className="flex items-center gap-1 font-medium">
-                        <MapPin className="w-3 h-3 text-slate-400" />
-                        {item.district}, {item.region}
+                      <span className="flex items-center gap-1 font-medium truncate max-w-[65%]">
+                        <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                        <span className="truncate">{item.district || 'Zona Monitoreada'}, {item.region || 'Perú'}</span>
                       </span>
-                      <span className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold">
+                      <span className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold text-[10px]">
                         {Math.round(item.confidenceScore * 100)}% Confianza
                       </span>
                     </div>
 
                     <div className="mt-2 flex items-center justify-between text-[11px] text-teal-700 font-medium">
-                      <span className="flex items-center gap-1">
-                        {item.reportsCount ? (
-                          <>
-                            <Users className="w-3 h-3" />
-                            {item.reportsCount} reportes
-                          </>
-                        ) : (
-                          <span>Evento Oficial</span>
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1">
+                          {item.reportsCount ? (
+                            <>
+                              <Users className="w-3 h-3" />
+                              {item.reportsCount} reportes
+                            </>
+                          ) : (
+                            <span>Evento Oficial</span>
+                          )}
+                        </span>
+                        {item.mediaUrl && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded font-medium border border-blue-200">
+                            <Camera className="w-2.5 h-2.5" />
+                            Foto
+                          </span>
                         )}
-                      </span>
+                      </div>
                       <button
                         type="button"
                         onClick={(e) => {

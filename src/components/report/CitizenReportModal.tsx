@@ -43,6 +43,12 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'locating' | 'success' | 'error'>('idle');
   const [locationError, setLocationError] = useState<string>('');
+  const [geoInfo, setGeoInfo] = useState<{ district: string; province: string; region: string }>({
+    district: '',
+    province: '',
+    region: ''
+  });
+  const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   
   const [compressionResult, setCompressionResult] = useState<CompressionResult | null>(null);
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
@@ -55,6 +61,44 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Geocodificación inversa con OpenStreetMap Nominatim
+  const fetchReverseGeocode = async (lat: number, lng: number) => {
+    setIsGeocoding(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data.address || {};
+        const districtName = addr.district || addr.suburb || addr.city_district || addr.neighbourhood || addr.quarter || addr.town || addr.village || addr.city || 'Zona Monitoreada';
+        const provinceName = addr.county || addr.city || addr.province || addr.state_district || 'Provincia Local';
+        const regionName = addr.state || addr.region || 'Perú';
+
+        setGeoInfo({
+          district: districtName,
+          province: provinceName,
+          region: regionName
+        });
+      }
+    } catch {
+      // Fallback si no hay red o da timeout
+      setGeoInfo(prev => ({
+        district: prev.district || 'Zona Monitoreada',
+        province: prev.province || 'Provincia Local',
+        region: prev.region || 'Perú'
+      }));
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
 
   // Solicitar ubicación GPS automáticamente al abrir
   useEffect(() => {
@@ -77,18 +121,21 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({
     setLocationStatus('locating');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation({
-          lat: Number(pos.coords.latitude.toFixed(6)),
-          lng: Number(pos.coords.longitude.toFixed(6))
-        });
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setLocation({ lat, lng });
         setLocationStatus('success');
+        fetchReverseGeocode(lat, lng);
       },
       (err) => {
         console.warn('GPS error:', err.message);
         setLocationStatus('error');
         setLocationError('No se pudo obtener GPS. Puedes reportar con coordenadas de contingencia.');
         // Coordenadas de contingencia por defecto (Centro de Lima)
-        setLocation({ lat: -12.0464, lng: -77.0428 });
+        const lat = -12.0464;
+        const lng = -77.0428;
+        setLocation({ lat, lng });
+        fetchReverseGeocode(lat, lng);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
@@ -133,6 +180,9 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({
         category: selectedCategory,
         latitude: location.lat,
         longitude: location.lng,
+        district: geoInfo.district || 'Zona Monitoreada',
+        province: geoInfo.province || 'Provincia Local',
+        region: geoInfo.region || 'Perú',
         description,
         image_blob: finalBlob,
         image_preview: compressionResult?.dataUrl
@@ -344,21 +394,41 @@ export const CitizenReportModal: React.FC<CitizenReportModalProps> = ({
               </button>
             </div>
 
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs flex items-center justify-between">
-              {locationStatus === 'locating' ? (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                  <span>Obteniendo precisión satelital...</span>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                {locationStatus === 'locating' ? (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    <span>Obteniendo precisión satelital...</span>
+                  </div>
+                ) : location ? (
+                  <div>
+                    <span className="font-mono text-slate-800 font-semibold">
+                      Lat: {location.lat}, Lng: {location.lng}
+                    </span>
+                    <p className="text-[11px] text-emerald-600 font-medium">GPS capturado y sellado</p>
+                  </div>
+                ) : (
+                  <span className="text-slate-500">Sin coordenadas detectadas</span>
+                )}
+              </div>
+
+              {location && (
+                <div className="pt-2 border-t border-slate-200 text-[11px]">
+                  {isGeocoding ? (
+                    <div className="flex items-center gap-1.5 text-slate-500">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                      <span>Identificando Distrito / Provincia / Región...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">Ubicación detectada:</span>
+                      <span className="font-bold text-slate-800 text-right">
+                        {geoInfo.district ? `${geoInfo.district}, ${geoInfo.province || geoInfo.region}` : 'Zona Monitoreada, Perú'}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              ) : location ? (
-                <div>
-                  <span className="font-mono text-slate-800 font-semibold">
-                    Lat: {location.lat}, Lng: {location.lng}
-                  </span>
-                  <p className="text-[11px] text-emerald-600 font-medium">GPS capturado y sellado</p>
-                </div>
-              ) : (
-                <span className="text-slate-500">Sin coordenadas detectadas</span>
               )}
             </div>
             {locationError && (

@@ -17,7 +17,9 @@ import {
   Waves, 
   CloudRain,
   ExternalLink,
-  Compass
+  Compass,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { DamecFeature, DamecSeverity } from '@/types/damec-geo';
 
@@ -178,31 +180,74 @@ export const ClusterDetailDrawer: React.FC<ClusterDetailDrawerProps> = ({
           </div>
         </div>
 
-        {/* Ubicación Territorial */}
+        {/* Evidencia Fotográfica Verificada */}
+        {properties.mediaUrl && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+              <Camera className="w-4 h-4 text-blue-600" />
+              Evidencia Fotográfica Verificada
+            </h4>
+            <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900 group shadow-xs">
+              <img 
+                src={properties.mediaUrl} 
+                alt="Evidencia fotográfica del incidente" 
+                className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-transparent p-3 flex items-center justify-between">
+                <span className="text-[11px] text-slate-200 font-medium flex items-center gap-1">
+                  <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
+                  Foto en terreno (Cloudflare CDN)
+                </span>
+                <a 
+                  href={properties.mediaUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded text-[11px] font-bold text-white flex items-center gap-1 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Ver original
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ubicación Territorial (Distrito / Provincia / Región) */}
         <div>
           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-red-600" />
             Ubicación Geográfica
           </h4>
 
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="p-3 bg-white border border-slate-200 rounded-lg">
-              <p className="text-[11px] text-slate-400 font-medium">Distrito / Provincia</p>
-              <p className="font-bold text-slate-900">{properties.district}</p>
-              <p className="text-slate-600">{properties.province}</p>
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Distrito</p>
+              <p className="font-bold text-slate-900 text-xs mt-0.5 truncate" title={properties.district}>
+                {properties.district || 'Distrito local'}
+              </p>
             </div>
-            <div className="p-3 bg-white border border-slate-200 rounded-lg">
-              <p className="text-[11px] text-slate-400 font-medium">Región / Ubigeo</p>
-              <p className="font-bold text-slate-900">{properties.region}</p>
-              <p className="font-mono text-slate-600">Ubigeo: {properties.ubigeo}</p>
+            <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Provincia</p>
+              <p className="font-bold text-slate-900 text-xs mt-0.5 truncate" title={properties.province}>
+                {properties.province || 'Provincia'}
+              </p>
+            </div>
+            <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Región</p>
+              <p className="font-bold text-slate-900 text-xs mt-0.5 truncate" title={properties.region}>
+                {properties.region || 'Perú'}
+              </p>
             </div>
           </div>
 
           {coords && (
-            <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+            <div className="mt-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <Compass className="w-4 h-4 text-slate-500" />
-                <span className="font-mono text-slate-700 font-semibold">
+                <span className="font-mono text-slate-700 font-semibold text-[11px]">
                   {coords[1].toFixed(5)}, {coords[0].toFixed(5)}
                 </span>
               </div>

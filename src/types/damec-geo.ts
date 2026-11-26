@@ -14,10 +14,11 @@ export interface DamecIncidentProperties {
   description: string;
   severity: DamecSeverity;
   source: DamecSourceType;
-  ubigeo: string;
+  ubigeo?: string;
   region: string;
   province: string;
   district: string;
+  mediaUrl?: string;
   confirmedAt: string; // ISO 8601
   updatedAt: string;   // ISO 8601
   confidenceScore: number; // 0.00 a 1.00
